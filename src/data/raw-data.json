@@ -1,0 +1,28 @@
+[
+    {
+      "docId": "WC1",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": []
+      }
+    },
+    {
+      "docId": "A",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-A",
+        "manufacturingOrderId": "MO1",
+        "workCenterId": "WC1",
+        "startDate": "2026-03-02T16:00:00",
+        "endDate": "2026-03-02T18:00:00",
+        "durationMinutes": 120,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    }
+  ]

@@ -1,12 +1,10 @@
 import { reflowSchedule } from "./reflow/reflow.service";
-import { workCenters, workOrders } from "./data/sample-data";
+import rawData from "./data/raw-data.json";
 
-console.log("ERP Reflow Scheduler");
+const result = reflowSchedule(rawData);
 
-const result = reflowSchedule(workOrders, workCenters);
+console.log("\n✅ FINAL SCHEDULE");
+console.dir(result.schedule, { depth: null });
 
-console.log("\nFinal Schedule:");
-console.log(result.schedule);
-
-console.log("\nChanges:");
-console.log(result.changes);
+console.log("\n🔁 CHANGES");
+console.dir(result.changes, { depth: null });
