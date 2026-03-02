@@ -53,6 +53,9 @@ function getActiveShift(date: Date, shifts: Shift[]): Shift | undefined {
 export function nextShiftStart(date: Date, shifts: Shift[]): Date {
   let cursor = toDT(date).plus({ minutes: 1 }); // move forward slightly
 
+
+  //@upgrade: the hard limit of 14 days is a bit of a hack. We can in theory use hard deadline from the manufacturing order to determne a more realistic limit.
+
   // Search up to 14 days ahead
   for (let i = 0; i < 14; i++) {
     const dayCandidate = cursor.plus({ days: i }).startOf("day");
