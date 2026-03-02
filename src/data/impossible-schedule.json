@@ -12,6 +12,11 @@
             "startDate": "2026-03-02T08:00:00Z",
             "endDate": "2026-03-02T10:00:00Z",
             "reason": "Full Maintenance"
+          },
+          {
+            "startDate": "2026-03-09T08:00:00Z",
+            "endDate": "2026-03-09T10:00:00Z",
+            "reason": "Full Maintenance"
           }
         ]
       }

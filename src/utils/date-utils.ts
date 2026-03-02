@@ -50,14 +50,17 @@ function getActiveShift(date: Date, shifts: Shift[]): Shift | undefined {
 /**
  * Get next valid shift start AFTER the given time
  */
-export function nextShiftStart(date: Date, shifts: Shift[]): Date {
-  let cursor = toDT(date).plus({ minutes: 1 }); // move forward slightly
+export function nextShiftStart(
+  date: Date,
+  shifts: Shift[],
+  maintenanceWindows: TimeWindow[]
+): Date {
 
+  let cursor = toDT(date).plus({ minutes: 1 });
 
-  //@upgrade: the hard limit of 14 days is a bit of a hack. We can in theory use hard deadline from the manufacturing order to determne a more realistic limit.
-
-  // Search up to 14 days ahead
+  // @upgrade: Replace 14-day guard with due date logic
   for (let i = 0; i < 14; i++) {
+
     const dayCandidate = cursor.plus({ days: i }).startOf("day");
     const weekday = normalizeWeekday(dayCandidate);
 
@@ -66,6 +69,7 @@ export function nextShiftStart(date: Date, shifts: Shift[]): Date {
       .sort((a, b) => a.startHour - b.startHour);
 
     for (const shift of shiftForDay) {
+
       const shiftStart = dayCandidate.set({
         hour: shift.startHour,
         minute: 0,
@@ -73,13 +77,33 @@ export function nextShiftStart(date: Date, shifts: Shift[]): Date {
         millisecond: 0
       });
 
-      if (shiftStart > cursor) {
+      const shiftEnd = dayCandidate.set({
+        hour: shift.endHour,
+        minute: 0,
+        second: 0,
+        millisecond: 0
+      });
+
+      if (shiftStart <= cursor) continue;
+
+      // check if shift fully blocked by maintenance
+      const fullyBlocked = maintenanceWindows.some((w) => {
+        const mStart = toDT(w.start);
+        const mEnd = toDT(w.end);
+
+        return (
+          mStart <= shiftStart &&
+          mEnd >= shiftEnd
+        );
+      });
+
+      if (!fullyBlocked) {
         return shiftStart.toJSDate();
       }
     }
   }
 
-  throw new Error("No future shift found within 14 days");
+  throw new Error("No feasible shift found within 14 days");
 }
 
 /**
@@ -120,15 +144,19 @@ export function addWorkingMinutes(
 
   while (remaining > 0) {
 
-    // 1️⃣ Align to shift if outside shift
+    //Align to shift if outside shift
     if (!isWithinShift(current.toJSDate(), workCenter.shifts)) {
       current = toDT(
-        nextShiftStart(current.toJSDate(), workCenter.shifts)
+        nextShiftStart(
+          current.toJSDate(),
+          workCenter.shifts,
+          workCenter.maintenanceWindows
+        )
       );
       continue;
     }
 
-    // 2️⃣ Skip maintenance if inside maintenance
+    //Skip maintenance if inside maintenance
     const afterMaintenance = movePastMaintenance(
       current,
       workCenter.maintenanceWindows
@@ -139,7 +167,7 @@ export function addWorkingMinutes(
       continue;
     }
 
-    // 3️⃣ Get active shift
+    //Get active shift
     const shift = getActiveShift(
       current.toJSDate(),
       workCenter.shifts
@@ -147,12 +175,16 @@ export function addWorkingMinutes(
 
     if (!shift) {
       current = toDT(
-        nextShiftStart(current.toJSDate(), workCenter.shifts)
+        nextShiftStart(
+          current.toJSDate(),
+          workCenter.shifts,
+          workCenter.maintenanceWindows
+        )
       );
       continue;
     }
 
-    // 4️⃣ Calculate shift end
+    //Calculate shift end
     const shiftEnd = current.set({
       hour: shift.endHour,
       minute: 0,
@@ -166,7 +198,11 @@ export function addWorkingMinutes(
 
     if (availableMinutes <= 0) {
       current = toDT(
-        nextShiftStart(current.toJSDate(), workCenter.shifts)
+        nextShiftStart(
+          current.toJSDate(),
+          workCenter.shifts,
+          workCenter.maintenanceWindows
+        )
       );
       continue;
     }
