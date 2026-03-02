@@ -89,7 +89,20 @@ export function reflowSchedule(
     const endDeltaMinutes =
       (end.getTime() - originalEnd.getTime()) / 60000;
 
-    // ---- record change if anything moved ----
+    let reasons: string[] = [];
+
+    if (earliestStart.getTime() > originalStart.getTime()) {
+      reasons.push("Dependency constraint");
+    }
+
+    if (start.getTime() > earliestStart.getTime()) {
+      reasons.push("Work center conflict");
+    }
+
+    if (endDeltaMinutes > startDeltaMinutes) {
+      reasons.push("Shift boundary or maintenance");
+    }
+
     if (startDeltaMinutes !== 0 || endDeltaMinutes !== 0) {
       changes.push({
         workOrderId: order.id,
@@ -99,7 +112,7 @@ export function reflowSchedule(
         newEnd: end,
         startDeltaMinutes,
         endDeltaMinutes,
-        reason: "Reflow adjustment"
+        reason: reasons.join(", ") || "Duration recalculation"
       });
     }
 
