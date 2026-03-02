@@ -58,12 +58,20 @@ export type ScheduledBlock = {
 
 export type ScheduleChange = {
     workOrderId: string;
+
     oldStart: Date;
     newStart: Date;
+
+    oldEnd: Date;
+    newEnd: Date;
+
+    startDeltaMinutes: number;
+    endDeltaMinutes: number;
+
     reason: string;
 };
 
 export type ReflowResult = {
-    schedule: WorkOrder[];
+    updatedWorkOrders: WorkOrder[];
     changes: ScheduleChange[];
 };
