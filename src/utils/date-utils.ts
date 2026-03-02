@@ -142,6 +142,23 @@ export function addWorkingMinutes(
   let current = toDT(start);
   let remaining = durationMinutes;
 
+  // Always align to valid working time first
+  if (!isWithinShift(current.toJSDate(), workCenter.shifts)) {
+    current = toDT(
+      nextShiftStart(
+        current.toJSDate(),
+        workCenter.shifts,
+        workCenter.maintenanceWindows
+      )
+    );
+  }
+
+  // Skip maintenance if needed
+  current = movePastMaintenance(
+    current,
+    workCenter.maintenanceWindows
+  );
+
   while (remaining > 0) {
 
     //Align to shift if outside shift
@@ -192,8 +209,20 @@ export function addWorkingMinutes(
       millisecond: 0
     });
 
+    // Adjust for maintenance occurring within shift
+    let effectiveEnd = shiftEnd;
+
+    for (const w of workCenter.maintenanceWindows) {
+      const mStart = toDT(w.start);
+
+      if (mStart > current && mStart < shiftEnd) {
+        effectiveEnd = mStart;
+        break;
+      }
+    }
+
     const availableMinutes = Math.floor(
-      shiftEnd.diff(current, "minutes").minutes
+      effectiveEnd.diff(current, "minutes").minutes
     );
 
     if (availableMinutes <= 0) {

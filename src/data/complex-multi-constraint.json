@@ -1,0 +1,99 @@
+[
+    {
+      "docId": "WC1",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line A",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 3, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 4, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 5, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": [
+          {
+            "startDate": "2026-03-03T10:00:00Z",
+            "endDate": "2026-03-03T12:00:00Z",
+            "reason": "Hydraulic Maintenance"
+          }
+        ]
+      }
+    },
+  
+    {
+      "docId": "WC2",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line B",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 3, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 4, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 5, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": []
+      }
+    },
+  
+    {
+      "docId": "A",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-A",
+        "manufacturingOrderId": "MO10",
+        "workCenterId": "WC1",
+        "startDate": "2026-03-02T08:00:00Z",
+        "endDate": "2026-03-02T10:00:00Z",
+        "durationMinutes": 360,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    },
+  
+    {
+      "docId": "D",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-D",
+        "manufacturingOrderId": "MO10",
+        "workCenterId": "WC1",
+        "startDate": "2026-03-02T10:00:00Z",
+        "endDate": "2026-03-02T12:00:00Z",
+        "durationMinutes": 180,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    },
+  
+    {
+      "docId": "B",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-B",
+        "manufacturingOrderId": "MO10",
+        "workCenterId": "WC2",
+        "startDate": "2026-03-02T10:00:00Z",
+        "endDate": "2026-03-02T12:00:00Z",
+        "durationMinutes": 180,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["A"]
+      }
+    },
+  
+    {
+      "docId": "C",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-C",
+        "manufacturingOrderId": "MO10",
+        "workCenterId": "WC1",
+        "startDate": "2026-03-02T12:00:00Z",
+        "endDate": "2026-03-02T14:00:00Z",
+        "durationMinutes": 240,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["B"]
+      }
+    }
+  ]

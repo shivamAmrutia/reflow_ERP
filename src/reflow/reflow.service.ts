@@ -217,7 +217,12 @@ function findNextAvailableSlot(
   timeline: { start: Date; end: Date }[]
 ): Date {
 
-  let candidate = new Date(earliestStart);
+  // Align initial candidate to valid working time
+  let candidate = addWorkingMinutes(
+    new Date(earliestStart),
+    0,
+    wc
+  );
 
   while (true) {
 
@@ -235,6 +240,11 @@ function findNextAvailableSlot(
 
     if (!conflict) return candidate;
 
-    candidate = new Date(conflict.end);
+    // Move to end of conflict and realign
+    candidate = addWorkingMinutes(
+      conflict.end,
+      0,
+      wc
+    );
   }
 }

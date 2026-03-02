@@ -1,8 +1,7 @@
 import { reflowSchedule } from "./reflow/reflow.service";
 // import rawData from "./data/raw-data.json";
-import delay from "./data/delay-cascade.json";
+import complex from "./data/complex-multi-constraint.json";
 
 // const result = reflowSchedule(rawData);
 
-console.log("\n=== delay cascade Schedule ===");
-console.dir(reflowSchedule(delay), { depth: null });
+console.dir(reflowSchedule(complex), { depth: null });
