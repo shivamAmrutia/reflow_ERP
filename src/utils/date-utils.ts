@@ -1,66 +1,74 @@
 import { DateTime } from "luxon";
-import {
-  Shift,
-  TimeWindow,
-  WorkCenter
-} from "../reflow/types";
+import { Shift, TimeWindow, WorkCenter } from "../reflow/types";
 
 /**
- * Converts a JS Date to a Luxon DateTime.
+ * Always use UTC
  */
-const dt = (d: Date) => DateTime.fromJSDate(d);
+const toDT = (d: Date) => DateTime.fromJSDate(d, { zone: "utc" });
 
 /**
- * Checks whether a date is inside any shift.
+ * Luxon weekday:
+ * 1 = Monday ... 7 = Sunday
+ *
+ * Our shift format:
+ * 0 = Sunday ... 6 = Saturday
+ */
+function normalizeWeekday(dt: DateTime): number {
+  return dt.weekday === 7 ? 0 : dt.weekday;
+}
+
+/**
+ * Check if given time is inside any shift
  */
 export function isWithinShift(date: Date, shifts: Shift[]): boolean {
-  const t = dt(date);
+  const dt = toDT(date);
+  const day = normalizeWeekday(dt);
 
-  return shifts.some(s =>
-    s.dayOfWeek === (t.weekday % 7) &&
-    t.hour >= s.startHour &&
-    t.hour < s.endHour
+  return shifts.some(
+    (s) =>
+      s.dayOfWeek === day &&
+      dt.hour >= s.startHour &&
+      dt.hour < s.endHour
   );
 }
 
 /**
- * Returns the shift start on the same day.
+ * Get active shift at given time
  */
-function getShiftStart(date: DateTime, shift: Shift) {
-  return date.set({
-    hour: shift.startHour,
-    minute: 0,
-    second: 0,
-    millisecond: 0
-  });
+function getActiveShift(date: Date, shifts: Shift[]): Shift | undefined {
+  const dt = toDT(date);
+  const day = normalizeWeekday(dt);
+
+  return shifts.find(
+    (s) =>
+      s.dayOfWeek === day &&
+      dt.hour >= s.startHour &&
+      dt.hour < s.endHour
+  );
 }
 
 /**
- * Returns the shift end on the same day.
- */
-function getShiftEnd(date: DateTime, shift: Shift) {
-  return date.set({
-    hour: shift.endHour,
-    minute: 0,
-    second: 0,
-    millisecond: 0
-  });
-}
-
-/**
- * Finds the next valid shift start after the given time.
+ * Get next valid shift start AFTER the given time
  */
 export function nextShiftStart(date: Date, shifts: Shift[]): Date {
-  let cursor = dt(date);
+  let cursor = toDT(date).plus({ minutes: 1 }); // move forward slightly
 
-  // Search up to 14 days forward (safeguard).
+  // Search up to 14 days ahead
   for (let i = 0; i < 14; i++) {
-    const day = cursor.plus({ days: i });
+    const dayCandidate = cursor.plus({ days: i }).startOf("day");
+    const weekday = normalizeWeekday(dayCandidate);
 
-    for (const shift of shifts) {
-      if (shift.dayOfWeek !== (day.weekday % 7)) continue;
+    const shiftForDay = shifts
+      .filter((s) => s.dayOfWeek === weekday)
+      .sort((a, b) => a.startHour - b.startHour);
 
-      const shiftStart = getShiftStart(day, shift);
+    for (const shift of shiftForDay) {
+      const shiftStart = dayCandidate.set({
+        hour: shift.startHour,
+        minute: 0,
+        second: 0,
+        millisecond: 0
+      });
 
       if (shiftStart > cursor) {
         return shiftStart.toJSDate();
@@ -68,46 +76,35 @@ export function nextShiftStart(date: Date, shifts: Shift[]): Date {
     }
   }
 
-  throw new Error("No future shift found");
+  throw new Error("No future shift found within 14 days");
 }
 
 /**
- * Moves a date past a maintenance window if it falls inside one.
+ * If current time is inside maintenance window,
+ * move to end of maintenance.
  */
-export function movePastMaintenance(
-  date: Date,
+function movePastMaintenance(
+  current: DateTime,
   windows: TimeWindow[]
-): Date {
-
+): DateTime {
   for (const w of windows) {
-    if (date >= w.start && date < w.end) {
-      return w.end;
+    const start = toDT(w.start);
+    const end = toDT(w.end);
+
+    if (current >= start && current < end) {
+      return end;
     }
   }
-
-  return date;
+  return current;
 }
 
 /**
- * Finds the active shift at a given time.
- */
-function getActiveShift(date: Date, shifts: Shift[]): Shift | undefined {
-  const t = dt(date);
-
-  return shifts.find(s =>
-    s.dayOfWeek === (t.weekday % 7) &&
-    t.hour >= s.startHour &&
-    t.hour < s.endHour
-  );
-}
-
-/**
- * Core engine.
+ * CORE FUNCTION
  *
- * Adds working minutes while respecting:
- * - shifts
- * - maintenance
- * - pause/resume
+ * Adds working minutes respecting:
+ * - shift boundaries
+ * - maintenance windows
+ * - pause/resume behavior
  */
 export function addWorkingMinutes(
   start: Date,
@@ -115,47 +112,66 @@ export function addWorkingMinutes(
   workCenter: WorkCenter
 ): Date {
 
-  let current = dt(start);
+  let current = toDT(start);
   let remaining = durationMinutes;
 
   while (remaining > 0) {
 
-    //Ensure inside shift
+    // 1️⃣ Align to shift if outside shift
     if (!isWithinShift(current.toJSDate(), workCenter.shifts)) {
-      current = dt(nextShiftStart(current.toJSDate(), workCenter.shifts));
+      current = toDT(
+        nextShiftStart(current.toJSDate(), workCenter.shifts)
+      );
       continue;
     }
 
-    //Skip maintenance
-    const moved = movePastMaintenance(
-      current.toJSDate(),
+    // 2️⃣ Skip maintenance if inside maintenance
+    const afterMaintenance = movePastMaintenance(
+      current,
       workCenter.maintenanceWindows
     );
 
-    if (moved.getTime() !== current.toMillis()) {
-      current = dt(moved);
+    if (!afterMaintenance.equals(current)) {
+      current = afterMaintenance;
       continue;
     }
 
-    //Get active shift
-    const shift = getActiveShift(current.toJSDate(), workCenter.shifts);
+    // 3️⃣ Get active shift
+    const shift = getActiveShift(
+      current.toJSDate(),
+      workCenter.shifts
+    );
 
     if (!shift) {
-      current = dt(nextShiftStart(current.toJSDate(), workCenter.shifts));
+      current = toDT(
+        nextShiftStart(current.toJSDate(), workCenter.shifts)
+      );
       continue;
     }
 
-    const shiftEnd = getShiftEnd(current, shift);
+    // 4️⃣ Calculate shift end
+    const shiftEnd = current.set({
+      hour: shift.endHour,
+      minute: 0,
+      second: 0,
+      millisecond: 0
+    });
 
-    // minutes available before shift ends
-    const available = Math.floor(
+    const availableMinutes = Math.floor(
       shiftEnd.diff(current, "minutes").minutes
     );
 
-    const workNow = Math.min(available, remaining);
+    if (availableMinutes <= 0) {
+      current = toDT(
+        nextShiftStart(current.toJSDate(), workCenter.shifts)
+      );
+      continue;
+    }
 
-    current = current.plus({ minutes: workNow });
-    remaining -= workNow;
+    const minutesToWork = Math.min(availableMinutes, remaining);
+
+    current = current.plus({ minutes: minutesToWork });
+    remaining -= minutesToWork;
   }
 
   return current.toJSDate();

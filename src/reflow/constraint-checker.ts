@@ -1,7 +1,7 @@
 import { WorkOrder } from "./types";
 
 export function validateSchedule(workOrders: WorkOrder[]): boolean {
-  // TODO: Implement real schedule validation:
+  // later:
   // - overlap checks
   // - dependency checks
   // - shift validation
