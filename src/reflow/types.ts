@@ -58,6 +58,7 @@ export type ScheduledBlock = {
 
 export type ScheduleChange = {
     workOrderId: string;
+    workOrderNumber: string;  // For explanation display
 
     oldStart: Date;
     newStart: Date;
@@ -74,4 +75,5 @@ export type ScheduleChange = {
 export type ReflowResult = {
     updatedWorkOrders: WorkOrder[];
     changes: ScheduleChange[];
+    explanation: string;  // Why the schedule changed (per spec)
 };

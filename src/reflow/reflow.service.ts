@@ -74,6 +74,7 @@ export function reflowSchedule(
 
     // ---- dependency constraint ----
     let earliestStart = order.start;
+    const blockingParentIds: string[] = [];
 
     for (const parentId of order.dependsOn) {
       const parent = workOrderMap.get(parentId);
@@ -81,6 +82,7 @@ export function reflowSchedule(
 
       if (parent.end > earliestStart) {
         earliestStart = parent.end;
+        blockingParentIds.push(parentId);
       }
     }
 
@@ -129,30 +131,31 @@ export function reflowSchedule(
     const endDeltaMinutes =
       (end.getTime() - originalEnd.getTime()) / 60000;
 
-    let reasons: string[] = [];
+    const reasons: string[] = [];
 
-    if (earliestStart.getTime() > originalStart.getTime()) {
-      reasons.push("Dependency constraint");
+    if (blockingParentIds.length > 0) {
+      reasons.push(`Waiting for parent(s): ${blockingParentIds.join(", ")}`);
     }
 
     if (start.getTime() > earliestStart.getTime()) {
-      reasons.push("Work center conflict");
+      reasons.push("Scheduled after prior work on same work center");
     }
 
     if (endDeltaMinutes > startDeltaMinutes) {
-      reasons.push("Shift boundary or maintenance");
+      reasons.push("End extended: work spans shift boundary or maintenance window");
     }
 
     if (startDeltaMinutes !== 0 || endDeltaMinutes !== 0) {
       changes.push({
         workOrderId: order.id,
+        workOrderNumber: order.workOrderNumber,
         oldStart: originalStart,
         newStart: start,
         oldEnd: originalEnd,
         newEnd: end,
         startDeltaMinutes,
         endDeltaMinutes,
-        reason: reasons.join(", ") || "Duration recalculation"
+        reason: reasons.join(". ") || "Duration recalculation"
       });
     }
 
@@ -173,10 +176,46 @@ export function reflowSchedule(
   // 6) Validate schedule.
   validateSchedule(ordered);
 
+  const explanation = buildExplanation(changes);
+
   return {
     updatedWorkOrders: ordered,
-    changes
+    changes,
+    explanation
   };
+}
+
+/** Format date for explanation (UTC, compact). */
+function formatDT(d: Date): string {
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+/**
+ * Build a clear, multi-line explanation of what changed and why.
+ */
+function buildExplanation(changes: ScheduleChange[]): string {
+  if (changes.length === 0) {
+    return "No changes required. Schedule already respects all constraints.";
+  }
+
+  const lines: string[] = [
+    `Reflow complete. ${changes.length} work order(s) rescheduled.`,
+    ""
+  ];
+
+  for (const c of changes) {
+    const startMove = c.startDeltaMinutes !== 0
+      ? `start ${formatDT(c.oldStart)} → ${formatDT(c.newStart)} (${c.startDeltaMinutes > 0 ? "+" : ""}${c.startDeltaMinutes} min)`
+      : "start unchanged";
+    const endMove = c.endDeltaMinutes !== 0
+      ? `end ${formatDT(c.oldEnd)} → ${formatDT(c.newEnd)} (${c.endDeltaMinutes > 0 ? "+" : ""}${c.endDeltaMinutes} min)`
+      : "end unchanged";
+    lines.push(`• ${c.workOrderNumber} (${c.workOrderId}): ${startMove}; ${endMove}.`);
+    lines.push(`  Reason: ${c.reason}`);
+    lines.push("");
+  }
+
+  return lines.join("\n").trimEnd();
 }
 
 function parseDocuments(rawDocs: RawDocument[]) {

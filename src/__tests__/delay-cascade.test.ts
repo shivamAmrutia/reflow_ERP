@@ -46,6 +46,14 @@ describe("Delay Cascade Scenario", () => {
     // ---- Change detection ----
     expect(result.changes.length).toBe(3);
 
+    // ---- Explanation: summary and per-change reasons ----
+    expect(result.explanation).toContain("Reflow complete");
+    expect(result.explanation).toContain("3 work order(s) rescheduled");
+    expect(result.explanation).toContain("Reason:");
+    for (const c of result.changes) {
+      expect(result.explanation).toContain(c.workOrderId);
+      expect(result.explanation).toContain(c.workOrderNumber);
+    }
   });
 
 });
