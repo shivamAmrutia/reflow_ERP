@@ -33,7 +33,7 @@ describe("Complex Multi-Constraint Scenario", () => {
     expect(B.end.toISOString())
       .toBe("2026-03-02T17:00:00.000Z");
 
-    // C depends on B and spans maintenance
+    // C depends on B and D (multi-parent) and spans maintenance
     expect(C.start.toISOString())
       .toBe("2026-03-03T08:00:00.000Z");
     expect(C.end.toISOString())
@@ -43,6 +43,7 @@ describe("Complex Multi-Constraint Scenario", () => {
     // Dependency Integrity
     expect(A.end.getTime()).toBeLessThanOrEqual(B.start.getTime());
     expect(B.end.getTime()).toBeLessThanOrEqual(C.start.getTime());
+    expect(D.end.getTime()).toBeLessThanOrEqual(C.start.getTime());
 
     // No Overlaps On WC1
     expect(D.start.getTime()).toBeGreaterThanOrEqual(A.end.getTime());

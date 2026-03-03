@@ -93,7 +93,7 @@
         "endDate": "2026-03-02T14:00:00Z",
         "durationMinutes": 240,
         "isMaintenance": false,
-        "dependsOnWorkOrderIds": ["B"]
+        "dependsOnWorkOrderIds": ["B", "D"]
       }
     }
   ]
