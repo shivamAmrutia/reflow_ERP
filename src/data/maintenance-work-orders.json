@@ -1,0 +1,44 @@
+[
+  {
+    "docId": "WC_M",
+    "docType": "workCenter",
+    "data": {
+      "name": "Maintenance Line",
+      "shifts": [
+        { "dayOfWeek": 1, "startHour": 8, "endHour": 17 }
+      ],
+      "maintenanceWindows": []
+    }
+  },
+
+  {
+    "docId": "M1",
+    "docType": "workOrder",
+    "data": {
+      "workOrderNumber": "WO-M1",
+      "manufacturingOrderId": "MO-M",
+      "workCenterId": "WC_M",
+      "startDate": "2026-03-02T09:00:00Z",
+      "endDate": "2026-03-02T11:00:00Z",
+      "durationMinutes": 120,
+      "isMaintenance": true,
+      "dependsOnWorkOrderIds": []
+    }
+  },
+
+  {
+    "docId": "P1",
+    "docType": "workOrder",
+    "data": {
+      "workOrderNumber": "WO-P1",
+      "manufacturingOrderId": "MO-M",
+      "workCenterId": "WC_M",
+      "startDate": "2026-03-02T08:00:00Z",
+      "endDate": "2026-03-02T12:00:00Z",
+      "durationMinutes": 240,
+      "isMaintenance": false,
+      "dependsOnWorkOrderIds": []
+    }
+  }
+]
+

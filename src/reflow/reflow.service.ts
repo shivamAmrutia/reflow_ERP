@@ -41,7 +41,23 @@ export function reflowSchedule(
 
   const changes: ScheduleChange[] = [];
 
-    // 5) Core scheduling loop.
+  //Seed timelines with fixed maintenance work orders
+  for (const order of ordered) {
+    if (!order.isMaintenance) continue;
+
+    const existing =
+      timelines.get(order.workCenterId) ?? [];
+
+    existing.push({
+      workOrderId: order.id,
+      start: order.start,
+      end: order.end
+    });
+
+    timelines.set(order.workCenterId, existing);
+  }
+
+  // 5) CORE SCHEDULING LOOP
   for (const order of ordered) {
 
     if (order.isMaintenance) continue;
@@ -68,18 +84,42 @@ export function reflowSchedule(
       }
     }
 
-    // ---- work center conflict constraint ----
-    const start = findNextAvailableSlot(
+    // ---- work center conflict constraint with TRUE partial segmentation ----
+    // Treat already-scheduled blocks on this work center as additional
+    // "maintenance windows" so the job can consume *all* free gaps
+    // (possibly over multiple disjoint segments) without overlapping
+    // existing work.
+    const blockingWindows = timeline.map(block => ({
+      start: block.start,
+      end: block.end
+    }));
+
+    const effectiveWorkCenter: WorkCenter = {
+      ...wc,
+      maintenanceWindows: [
+        ...wc.maintenanceWindows,
+        ...blockingWindows
+      ]
+    };
+
+    // Align to first free working minute that is:
+    // - inside a shift
+    // - outside maintenance windows
+    // - outside any existing scheduled block
+    const start = addWorkingMinutes(
       earliestStart,
-      order.durationMinutes,
-      wc,
-      timeline
+      0,
+      effectiveWorkCenter
     );
 
+    // Then accumulate working minutes, automatically pausing:
+    // - outside shifts
+    // - during maintenance windows
+    // - during already-scheduled blocks (treated as maintenance)
     const end = addWorkingMinutes(
       start,
       order.durationMinutes,
-      wc
+      effectiveWorkCenter
     );
 
     // ---- compute deltas ----
@@ -130,7 +170,7 @@ export function reflowSchedule(
     timelines.set(order.workCenterId, timeline);
   }
 
-    // 6) Validate schedule.
+  // 6) Validate schedule.
   validateSchedule(ordered);
 
   return {
@@ -210,41 +250,8 @@ function topologicalSort(workOrders: WorkOrder[]): WorkOrder[] {
   return result;
 }
 
-function findNextAvailableSlot(
-  earliestStart: Date,
-  duration: number,
-  wc: WorkCenter,
-  timeline: { start: Date; end: Date }[]
-): Date {
-
-  // Align initial candidate to valid working time
-  let candidate = addWorkingMinutes(
-    new Date(earliestStart),
-    0,
-    wc
-  );
-
-  while (true) {
-
-    const candidateEnd = addWorkingMinutes(
-      candidate,
-      duration,
-      wc
-    );
-
-    const conflict = timeline.find(
-      block =>
-        candidate < block.end &&
-        candidateEnd > block.start
-    );
-
-    if (!conflict) return candidate;
-
-    // Move to end of conflict and realign
-    candidate = addWorkingMinutes(
-      conflict.end,
-      0,
-      wc
-    );
-  }
-}
+// NOTE: With true partial segmentation, we no longer
+// require a single continuous free block on the work
+// center. Instead, we model existing blocks as extra
+// maintenance windows and rely on addWorkingMinutes
+// to hop across them while accumulating working time.
